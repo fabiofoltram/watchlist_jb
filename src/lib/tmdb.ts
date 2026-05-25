@@ -58,3 +58,30 @@ export async function getDetails(mediaType: 'movie' | 'tv', tmdbId: number) {
   if (!res.ok) return null
   return res.json()
 }
+
+export async function getItemDetails(mediaType: 'movie' | 'tv', tmdbId: number) {
+  const key = process.env.TMDB_API_KEY
+  if (!key) return { genres: [], providers: [] }
+
+  const [detailsRes, providersRes] = await Promise.all([
+    fetch(`${TMDB_BASE}/${mediaType}/${tmdbId}?api_key=${key}&language=pt-BR`, { next: { revalidate: 3600 } }),
+    fetch(`${TMDB_BASE}/${mediaType}/${tmdbId}/watch/providers?api_key=${key}`, { next: { revalidate: 3600 } }),
+  ])
+
+  const genres: { id: number; name: string }[] = []
+  const providers: { provider_id: number; provider_name: string; logo_path: string }[] = []
+
+  if (detailsRes.ok) {
+    const data = await detailsRes.json()
+    for (const g of data.genres || []) genres.push({ id: g.id, name: g.name })
+  }
+
+  if (providersRes.ok) {
+    const data = await providersRes.json()
+    for (const p of data.results?.BR?.flatrate || []) {
+      providers.push({ provider_id: p.provider_id, provider_name: p.provider_name, logo_path: p.logo_path })
+    }
+  }
+
+  return { genres, providers }
+}

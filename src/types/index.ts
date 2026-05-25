@@ -11,6 +11,17 @@ export interface Profile {
   created_at: string
 }
 
+export interface WatchlistGenre {
+  id: number
+  name: string
+}
+
+export interface WatchlistProvider {
+  provider_id: number
+  provider_name: string
+  logo_path: string
+}
+
 export interface WatchlistItem {
   id: string
   user_id: string
@@ -23,6 +34,8 @@ export interface WatchlistItem {
   notes: string | null
   added_at: string
   watched_at: string | null
+  genres: WatchlistGenre[]
+  providers: WatchlistProvider[]
 }
 
 export interface WatchGroup {

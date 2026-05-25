@@ -69,11 +69,27 @@ export default function WatchlistCard({ item }: WatchlistCardProps) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <div>
+          <div className="min-w-0">
             <h3 className="font-semibold text-white text-sm truncate">{item.title}</h3>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${item.media_type === 'movie' ? 'text-blue-400' : 'text-orange-400'}`}>
-              {item.media_type === 'movie' ? 'Filme' : 'Série'}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span className={`text-xs px-2 py-0.5 rounded-full ${item.media_type === 'movie' ? 'text-blue-400' : 'text-orange-400'}`}>
+                {item.media_type === 'movie' ? 'Filme' : 'Série'}
+              </span>
+              {item.providers?.slice(0, 4).map(p => (
+                <Image
+                  key={p.provider_id}
+                  src={`https://image.tmdb.org/t/p/original${p.logo_path}`}
+                  alt={p.provider_name}
+                  title={p.provider_name}
+                  width={18}
+                  height={18}
+                  className="rounded-sm"
+                />
+              ))}
+              {(item.providers?.length ?? 0) > 4 && (
+                <span className="text-xs text-gray-500">+{item.providers.length - 4}</span>
+              )}
+            </div>
           </div>
           <div className="flex gap-1 shrink-0">
             <button onClick={() => setEditing(!editing)} className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white">

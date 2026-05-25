@@ -51,6 +51,8 @@ export default function SearchClient({ userId, watchlistSet: initialSet }: Props
     if (!modal) return
     setAdding(true)
     const title = modal.media_type === 'movie' ? modal.title : modal.name
+    const detailsRes = await fetch(`/api/item-details?mediaType=${modal.media_type}&tmdbId=${modal.id}`)
+    const { genres, providers } = await detailsRes.json()
     await supabase.from('watchlist_items').upsert({
       user_id: userId,
       tmdb_id: modal.id,
@@ -58,6 +60,8 @@ export default function SearchClient({ userId, watchlistSet: initialSet }: Props
       title,
       poster_path: modal.poster_path,
       status: addStatus,
+      genres,
+      providers,
     }, { onConflict: 'user_id,tmdb_id,media_type' })
     setWatchlistSet(prev => new Set(prev).add(`${modal.media_type}-${modal.id}`))
     setAdding(false)

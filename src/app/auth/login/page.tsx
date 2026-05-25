@@ -33,7 +33,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2 mb-8">
           <Film size={32} className="text-violet-400" />
-          <span className="text-2xl font-bold text-white">Watchlist JB</span>
+          <span className="text-2xl font-bold text-white">Minha Watchlist</span>
         </div>
 
         <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800">

@@ -27,7 +27,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl text-white">
           <Film className="text-violet-400" size={24} />
-          <span>Watchlist JB</span>
+          <span>Minha Watchlist</span>
         </Link>
 
         <div className="flex items-center gap-1">

@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Watchlist JB',
+  title: 'Minha Watchlist',
   description: 'Sua lista de filmes e séries para assistir',
 }
 

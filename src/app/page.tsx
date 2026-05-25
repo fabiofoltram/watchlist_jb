@@ -7,7 +7,7 @@ export default function Home() {
       <div className="max-w-2xl text-center space-y-6">
         <div className="flex items-center justify-center gap-3 mb-8">
           <Film size={48} className="text-violet-400" />
-          <h1 className="text-5xl font-bold text-white">Watchlist JB</h1>
+          <h1 className="text-5xl font-bold text-white">Minha Watchlist</h1>
         </div>
 
         <p className="text-xl text-gray-400">

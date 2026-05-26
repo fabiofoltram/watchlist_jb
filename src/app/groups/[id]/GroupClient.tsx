@@ -6,7 +6,7 @@ import { tmdbImageUrl } from '@/lib/tmdb'
 import { WatchGroup, WatchGroupMember, WatchGroupItem, TMDBResult } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Search, Check, X, Star } from 'lucide-react'
+import { UserPlus, Search, X, Star, Pencil, UserMinus, Trash2 } from 'lucide-react'
 import MediaCard from '@/components/MediaCard'
 
 interface Props {
@@ -31,15 +31,22 @@ const statusLabels: Record<GroupItemStatus, string> = {
   watched: 'Assistido',
 }
 
-export default function GroupClient({ group, userId, isCreator, members, items: initialItems }: Props) {
+export default function GroupClient({ group, userId, isCreator, members: initialMembers, items: initialItems }: Props) {
   const [items, setItems] = useState(initialItems)
+  const [members, setMembers] = useState(initialMembers)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<TMDBResult[]>([])
   const [searching, setSearching] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteUsername, setInviteUsername] = useState('')
   const [inviteMsg, setInviteMsg] = useState('')
+  const [showEdit, setShowEdit] = useState(false)
+  const [editName, setEditName] = useState(group.name)
+  const [editDesc, setEditDesc] = useState(group.description || '')
+  const [editSaving, setEditSaving] = useState(false)
+  const [groupName, setGroupName] = useState(group.name)
+  const [groupDesc, setGroupDesc] = useState(group.description || '')
   const router = useRouter()
   const supabase = createClient()
 
@@ -88,11 +95,11 @@ export default function GroupClient({ group, userId, isCreator, members, items: 
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
-      .eq('username', inviteEmail.trim())
+      .eq('username', inviteUsername.trim())
       .single()
 
     if (!profile) {
-      setInviteMsg('Usuário não encontrado. Certifique-se de usar o nome de usuário.')
+      setInviteMsg('Usuário não encontrado.')
       return
     }
 
@@ -104,56 +111,180 @@ export default function GroupClient({ group, userId, isCreator, members, items: 
       setInviteMsg('Usuário já é membro.')
       return
     }
-    setInviteMsg('Membro adicionado com sucesso!')
-    setInviteEmail('')
+    setInviteMsg('Membro adicionado!')
+    setInviteUsername('')
     router.refresh()
+  }
+
+  async function removeMember(memberId: string, memberUserId: string) {
+    if (memberUserId === group.created_by) return
+    await supabase.from('watch_group_members').delete().eq('id', memberId)
+    setMembers(prev => prev.filter(m => m.id !== memberId))
+  }
+
+  async function saveEdit() {
+    if (!editName.trim()) return
+    setEditSaving(true)
+    await supabase
+      .from('watch_groups')
+      .update({ name: editName.trim(), description: editDesc.trim() || null })
+      .eq('id', group.id)
+    setGroupName(editName.trim())
+    setGroupDesc(editDesc.trim())
+    setEditSaving(false)
+    setShowEdit(false)
+    router.refresh()
+  }
+
+  async function deleteGroup() {
+    if (!confirm(`Excluir o grupo "${groupName}"? Esta ação não pode ser desfeita.`)) return
+    await supabase.from('watch_group_items').delete().eq('group_id', group.id)
+    await supabase.from('watch_group_members').delete().eq('group_id', group.id)
+    await supabase.from('watch_groups').delete().eq('id', group.id)
+    router.push('/groups')
+  }
+
+  const statusSummary = {
+    suggested: items.filter(i => i.status === 'suggested').length,
+    watching: items.filter(i => i.status === 'watching').length,
+    watched: items.filter(i => i.status === 'watched').length,
   }
 
   return (
     <div className="pt-16 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 py-8">
+
+        {/* Header */}
         <div className="flex items-start justify-between mb-2">
-          <div>
-            <h1 className="text-2xl font-bold text-white">{group.name}</h1>
-            {group.description && <p className="text-gray-500 text-sm mt-1">{group.description}</p>}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-white">{groupName}</h1>
+            {groupDesc && <p className="text-gray-500 text-sm mt-1">{groupDesc}</p>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
+            {isCreator && (
+              <button
+                onClick={() => setShowEdit(true)}
+                className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-2 rounded-xl text-sm transition-colors"
+              >
+                <Pencil size={13} />
+                Editar
+              </button>
+            )}
             {isCreator && (
               <button
                 onClick={() => setShowInvite(!showInvite)}
-                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-xl text-sm transition-colors"
+                className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-2 rounded-xl text-sm transition-colors"
               >
-                <UserPlus size={14} />
+                <UserPlus size={13} />
                 Convidar
               </button>
             )}
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-3 py-2 rounded-xl text-sm transition-colors"
+              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-2 rounded-xl text-sm transition-colors"
             >
-              <Search size={14} />
+              <Search size={13} />
               Sugerir
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-8">
-          {members.map(m => (
-            <div key={m.id} title={(m.profile as { username: string | null } | undefined)?.username || 'Usuário'} className="w-8 h-8 rounded-full bg-violet-700 flex items-center justify-center text-xs font-bold text-white">
-              {((m.profile as { username: string | null } | undefined)?.username?.[0] || '?').toUpperCase()}
-            </div>
-          ))}
-          <span className="text-gray-500 text-sm">{members.length} membro{members.length !== 1 ? 's' : ''}</span>
+        {/* Membros */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          {members.map(m => {
+            const username = (m.profile as { username: string | null } | undefined)?.username
+            const isOwner = m.user_id === group.created_by
+            return (
+              <div key={m.id} className="flex items-center gap-1 bg-gray-800 rounded-full pl-1 pr-2 py-0.5">
+                <div className="w-6 h-6 rounded-full bg-violet-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                  {(username?.[0] || '?').toUpperCase()}
+                </div>
+                <span className="text-xs text-gray-300">{username || 'Usuário'}</span>
+                {isCreator && !isOwner && (
+                  <button onClick={() => removeMember(m.id, m.user_id)} className="ml-0.5 text-gray-600 hover:text-red-400">
+                    <X size={10} />
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
 
+        {/* Resumo */}
+        {items.length > 0 && (
+          <div className="flex gap-3 mb-6">
+            {statusSummary.suggested > 0 && (
+              <span className="text-xs bg-gray-800 text-gray-400 px-3 py-1 rounded-full">
+                {statusSummary.suggested} sugerido{statusSummary.suggested !== 1 ? 's' : ''}
+              </span>
+            )}
+            {statusSummary.watching > 0 && (
+              <span className="text-xs bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full">
+                {statusSummary.watching} assistindo
+              </span>
+            )}
+            {statusSummary.watched > 0 && (
+              <span className="text-xs bg-green-900/50 text-green-300 px-3 py-1 rounded-full">
+                {statusSummary.watched} assistido{statusSummary.watched !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Modal editar */}
+        {showEdit && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={() => setShowEdit(false)}>
+            <div className="bg-gray-900 rounded-2xl p-6 max-w-sm w-full border border-gray-700" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-white mb-4">Editar grupo</h3>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="Nome do grupo"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-violet-500"
+                />
+                <textarea
+                  value={editDesc}
+                  onChange={e => setEditDesc(e.target.value)}
+                  placeholder="Descrição (opcional)"
+                  rows={2}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 resize-none"
+                />
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button onClick={() => setShowEdit(false)} className="flex-1 py-2.5 rounded-lg bg-gray-800 text-gray-300 text-sm font-medium hover:bg-gray-700">
+                  Cancelar
+                </button>
+                <button
+                  onClick={saveEdit}
+                  disabled={editSaving || !editName.trim()}
+                  className="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-medium"
+                >
+                  {editSaving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+              <button
+                onClick={deleteGroup}
+                className="w-full mt-3 py-2 rounded-lg text-xs text-red-500 hover:text-red-400 hover:bg-gray-800 transition-colors flex items-center justify-center gap-1"
+              >
+                <Trash2 size={12} />
+                Excluir grupo
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Convidar */}
         {showInvite && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6">
             <h3 className="text-sm font-medium text-white mb-3">Convidar membro</h3>
             <div className="flex gap-2">
               <input
                 type="text"
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
+                value={inviteUsername}
+                onChange={e => setInviteUsername(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && inviteMember()}
                 placeholder="Nome de usuário"
                 className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500"
               />
@@ -165,6 +296,7 @@ export default function GroupClient({ group, userId, isCreator, members, items: 
           </div>
         )}
 
+        {/* Buscar para sugerir */}
         {showSearch && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6">
             <div className="flex gap-2 mb-3">
@@ -196,6 +328,7 @@ export default function GroupClient({ group, userId, isCreator, members, items: 
           </div>
         )}
 
+        {/* Lista de itens */}
         {items.length === 0 ? (
           <div className="text-center py-16 text-gray-600">
             <Star size={40} className="mx-auto mb-3 opacity-30" />
@@ -247,6 +380,19 @@ export default function GroupClient({ group, userId, isCreator, members, items: 
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Excluir grupo (rodapé, só criador) */}
+        {isCreator && (
+          <div className="mt-12 pt-6 border-t border-gray-800">
+            <button
+              onClick={deleteGroup}
+              className="flex items-center gap-2 text-sm text-red-600 hover:text-red-500 transition-colors"
+            >
+              <Trash2 size={14} />
+              Excluir grupo
+            </button>
           </div>
         )}
       </div>

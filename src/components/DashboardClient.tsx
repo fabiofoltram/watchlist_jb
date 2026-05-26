@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import WatchlistCard from '@/components/WatchlistCard'
-import { WatchlistItem, WatchStatus } from '@/types'
+import { WatchlistItem, WatchStatus, WatchGroup } from '@/types'
 import Link from 'next/link'
 import { Search, Plus, X } from 'lucide-react'
 
@@ -14,12 +14,14 @@ const statusGroups: { key: WatchStatus; label: string; emoji: string }[] = [
 
 interface Props {
   items: WatchlistItem[]
+  groups: WatchGroup[]
 }
 
-export default function DashboardClient({ items }: Props) {
+export default function DashboardClient({ items, groups }: Props) {
   const [filterType, setFilterType] = useState<'all' | 'movie' | 'tv'>('all')
   const [filterProvider, setFilterProvider] = useState<string>('all')
   const [filterGenre, setFilterGenre] = useState<string>('all')
+  const [filterGroup, setFilterGroup] = useState<string>('all')
 
   const availableProviders = useMemo(() => {
     const map = new Map<string, string>()
@@ -45,21 +47,26 @@ export default function DashboardClient({ items }: Props) {
       if (filterType !== 'all' && item.media_type !== filterType) return false
       if (filterProvider !== 'all' && !item.providers?.some(p => p.provider_name === filterProvider)) return false
       if (filterGenre !== 'all' && !item.genres?.some(g => g.name === filterGenre)) return false
+      if (filterGroup !== 'all') {
+        if (filterGroup === 'none' && item.group_id !== null) return false
+        if (filterGroup !== 'none' && item.group_id !== filterGroup) return false
+      }
       return true
     })
-  }, [items, filterType, filterProvider, filterGenre])
+  }, [items, filterType, filterProvider, filterGenre, filterGroup])
 
   const grouped = statusGroups.reduce((acc, { key }) => {
     acc[key] = filtered.filter(i => i.status === key)
     return acc
   }, {} as Record<WatchStatus, WatchlistItem[]>)
 
-  const hasFilters = filterType !== 'all' || filterProvider !== 'all' || filterGenre !== 'all'
+  const hasFilters = filterType !== 'all' || filterProvider !== 'all' || filterGenre !== 'all' || filterGroup !== 'all'
 
   function clearFilters() {
     setFilterType('all')
     setFilterProvider('all')
     setFilterGenre('all')
+    setFilterGroup('all')
   }
 
   return (
@@ -98,6 +105,39 @@ export default function DashboardClient({ items }: Props) {
               </button>
             ))}
           </div>
+
+          {/* Grupos */}
+          {groups.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setFilterGroup('all')}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                  filterGroup === 'all' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                Todos os grupos
+              </button>
+              <button
+                onClick={() => setFilterGroup('none')}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                  filterGroup === 'none' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                Sem grupo
+              </button>
+              {groups.map(g => (
+                <button
+                  key={g.id}
+                  onClick={() => setFilterGroup(filterGroup === g.id ? 'all' : g.id)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                    filterGroup === g.id ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {g.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Plataformas */}
           {availableProviders.length > 0 && (
@@ -201,7 +241,7 @@ export default function DashboardClient({ items }: Props) {
                 </h2>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {group.map(item => (
-                    <WatchlistCard key={item.id} item={item} />
+                    <WatchlistCard key={item.id} item={item} groups={groups} />
                   ))}
                 </div>
               </section>

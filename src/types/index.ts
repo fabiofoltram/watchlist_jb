@@ -36,6 +36,7 @@ export interface WatchlistItem {
   watched_at: string | null
   genres: WatchlistGenre[]
   providers: WatchlistProvider[]
+  group_id: string | null
 }
 
 export interface WatchGroup {

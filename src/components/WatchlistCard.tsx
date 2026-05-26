@@ -3,8 +3,8 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { tmdbImageUrl } from '@/lib/tmdb'
-import { WatchlistItem, WatchStatus } from '@/types'
-import { Star, Trash2, StickyNote, Check } from 'lucide-react'
+import { WatchlistItem, WatchStatus, WatchGroup } from '@/types'
+import { Star, Trash2, StickyNote, Check, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -22,18 +22,21 @@ const statusColors: Record<WatchStatus, string> = {
 
 interface WatchlistCardProps {
   item: WatchlistItem
+  groups: WatchGroup[]
 }
 
-export default function WatchlistCard({ item }: WatchlistCardProps) {
+export default function WatchlistCard({ item, groups }: WatchlistCardProps) {
   const [editing, setEditing] = useState(false)
   const [rating, setRating] = useState(item.rating || 0)
   const [notes, setNotes] = useState(item.notes || '')
   const [status, setStatus] = useState<WatchStatus>(item.status)
+  const [groupId, setGroupId] = useState<string | null>(item.group_id)
   const [saving, setSaving] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
   const imageUrl = tmdbImageUrl(item.poster_path)
+  const assignedGroup = groups.find(g => g.id === groupId)
 
   async function save() {
     setSaving(true)
@@ -44,10 +47,18 @@ export default function WatchlistCard({ item }: WatchlistCardProps) {
         rating: rating || null,
         notes: notes || null,
         watched_at: status === 'watched' ? new Date().toISOString() : null,
+        group_id: groupId,
       })
       .eq('id', item.id)
     setSaving(false)
     setEditing(false)
+    router.refresh()
+  }
+
+  async function handleGroupChange(newGroupId: string) {
+    const val = newGroupId === '' ? null : newGroupId
+    setGroupId(val)
+    await supabase.from('watchlist_items').update({ group_id: val }).eq('id', item.id)
     router.refresh()
   }
 
@@ -106,6 +117,12 @@ export default function WatchlistCard({ item }: WatchlistCardProps) {
             <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[item.status]}`}>
               {statusLabels[item.status]}
             </span>
+            {assignedGroup && (
+              <span className="flex items-center gap-1 text-xs text-violet-400">
+                <Users size={10} />
+                {assignedGroup.name}
+              </span>
+            )}
             {item.rating && (
               <span className="flex items-center gap-1 text-xs text-yellow-400">
                 <Star size={10} className="fill-yellow-400" />
@@ -127,6 +144,22 @@ export default function WatchlistCard({ item }: WatchlistCardProps) {
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
+
+            {groups.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Users size={12} className="text-gray-500 shrink-0" />
+                <select
+                  value={groupId ?? ''}
+                  onChange={e => handleGroupChange(e.target.value)}
+                  className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-white"
+                >
+                  <option value="">Sem grupo</option>
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map(n => (

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Link from 'next/link'
-import { Plus, Users } from 'lucide-react'
+import { Users, Film } from 'lucide-react'
 import CreateGroupButton from './CreateGroupButton'
 
 export default async function GroupsPage() {
@@ -20,7 +20,7 @@ export default async function GroupsPage() {
   const { data: groups } = groupIds.length > 0
     ? await supabase
         .from('watch_groups')
-        .select('*, watch_group_members(count)')
+        .select('*, watch_group_members(count), watch_group_items(count)')
         .in('id', groupIds)
         .order('created_at', { ascending: false })
     : { data: [] }
@@ -49,6 +49,7 @@ export default async function GroupsPage() {
             <div className="grid gap-4">
               {groups.map((group) => {
                 const memberCount = (group.watch_group_members as { count: number }[])[0]?.count ?? 0
+                const itemCount = (group.watch_group_items as { count: number }[])[0]?.count ?? 0
                 return (
                   <Link
                     key={group.id}
@@ -62,9 +63,15 @@ export default async function GroupsPage() {
                           <p className="text-gray-500 text-sm mt-1">{group.description}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 text-gray-500 text-sm">
-                        <Users size={14} />
-                        <span>{memberCount}</span>
+                      <div className="flex items-center gap-3 text-gray-500 text-sm shrink-0">
+                        <span className="flex items-center gap-1">
+                          <Film size={13} />
+                          {itemCount}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users size={13} />
+                          {memberCount}
+                        </span>
                       </div>
                     </div>
                   </Link>
